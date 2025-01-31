@@ -10,9 +10,7 @@ AI Translator is a powerful Statamic plugin that allows you to translate multipl
 
 - **More Connections Coming Soon** – Future support for Google Translate, OpenAI, and more.
 
-- **Supports All Global Languages** – Reach audiences worldwide with seamless 
-
-- multilingual support.
+- **Supports All Global Languages** – Reach audiences worldwide with seamless multilingual support.
 
 - **Bulk Translation** – Translate multiple pages at once with just a few clicks.
 
