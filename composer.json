@@ -1,0 +1,38 @@
+{
+    "name": "ai-translator/ai-translator",
+    "autoload": {
+        "psr-4": {
+            "AiTranslator\\": "ai-translator/"
+            
+            
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+        }
+    },
+    "require": {
+        "statamic/cms": "^5.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0"
+    },
+    "config": {
+        "allow-plugins": {
+            "pixelfear/composer-dist-plugin": true
+        }
+    },
+    "extra": {
+        "statamic": {
+            "name": "AI Translator",
+            "description": "AI Translator addon"
+        },
+        "laravel": {
+            "providers": [
+                "AiTranslator\\ServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
