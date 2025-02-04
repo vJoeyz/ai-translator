@@ -1,6 +1,8 @@
 <?php
 
 namespace AiTranslator\Jobs;
+use Statamic\Facades\Search;
+
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -56,13 +58,14 @@ class TranslateContent implements ShouldQueue
     private $row;
     private $siteData;
 
-    public function __construct($row, $siteData, $apiKeyPrivate)
+    public function __construct($row, $siteData, $apiKeyPrivate, $language)
     {
         $this->row = $row; 
         $this->siteData = $siteData;
         $this->apiKeyPrivate = $apiKeyPrivate;
        
         $this->apiKeyPrivate = $apiKeyPrivate;
+        $this->language = $language;
      
        
     }
@@ -73,19 +76,26 @@ class TranslateContent implements ShouldQueue
                     ->where('id', $this->row)
                     ->first();
          
-       
+    
         $pageLocalizations = $page->descendants();
-         
+      
+        if ($page->origin()) {
+            $pageLocalizations->put($page->origin()->locale, $page->origin());
+        }
+        
+      
+      
+        
         $translatedPageExists = false;
         $newPage = null;
         foreach($pageLocalizations as $pageTranslation){
+           
             if($pageTranslation->locale == $this->siteData->handle){
                 $translatedPageExists = true;
                 $newPage = $pageTranslation;
-               
+                
                 $newPage->data($page->data());
-                
-                
+             
                 $this->translatedContent = $newPage;
                 break;
             
@@ -93,7 +103,7 @@ class TranslateContent implements ShouldQueue
         }
         
         if($translatedPageExists == false){
-    
+     
             $slug = $page->slug();
             
             $response = $this->translateText($slug, $this->apiKeyPrivate, 'EN');
@@ -115,25 +125,8 @@ class TranslateContent implements ShouldQueue
         
             $this->translatedContent = Entry::find($newPage->id);
         }
-            
 
-        if($this->siteData->locale == 'en_US'){
-            $this->language = 'EN';  
-        } else if($this->siteData->locale == 'GB'){
-            $this->language = 'EN';  
-        } else if($this->siteData->locale == 'nl_BE'){
-            $this->language = 'NL';  // 
-        } else if($this->siteData->locale == 'fr_BE'){
-            $this->language = 'FR'; 
-        } else if($this->siteData->locale == 'es_ES'){
-            $this->language = 'ES'; 
-        } else if($this->siteData->locale == 'de_DE'){
-            $this->language = 'DE'; 
-        } else if($this->siteData->locale == 'it_IT'){
-            $this->language = 'IT';  
-        } else {
-            $this->language = 'EN';  
-        }
+
 
         $this->targetLocale = $this->siteData->locale;
         
@@ -148,11 +141,14 @@ class TranslateContent implements ShouldQueue
             
         $this->localizedData = $this->defaultData;
             
-    
+
         $this->processData();
         $this->translateData();
         $this->translateSlug();
         $this->saveTranslation();
+       
+      
+        
     }
 
     private function processData(): void
@@ -457,6 +453,8 @@ class TranslateContent implements ShouldQueue
 
     private function translate($value, string $key)
     {
+   
+
         // Check if '$key: $value' should be translated.
         if (! $this->isTranslatableKeyValuePair($value, $key)) {
             return $value;
@@ -553,10 +551,15 @@ class TranslateContent implements ShouldQueue
     {
        
         foreach ($this->translatedData as $key => $value) {
+           
             $this->content->set($key, $value);
+            
         }
+       
 
         $this->content->save();
+       
+       
     }
 
     private function arrayFilterRecursive(array $array, callable $callback = null): array
@@ -578,9 +581,7 @@ class TranslateContent implements ShouldQueue
         $translatedSlug = $this->translateWithDeepL($slug, 'text');
     
        
-       
         $this->content->slug($translatedSlug);
-      
     }
 
     /**

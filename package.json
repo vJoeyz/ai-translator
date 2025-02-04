@@ -2,7 +2,8 @@
     "private": true,
     "scripts": {
         "dev": "vite",
-        "build": "vite build"
+        "build": "vite build",
+         "post-autoload-dump": "@php artisan vendor:publish --tag=config"
     },
     "devDependencies": {
         "@vitejs/plugin-vue2": "^2.2.0",
