@@ -461,6 +461,7 @@ class TranslateContent implements ShouldQueue
         }
 
         // Translate HTML
+
         if ($this->isHtml($value)) {
             return $this->translateWithDeepL($value, 'html');
         }
@@ -471,30 +472,40 @@ class TranslateContent implements ShouldQueue
 
     private function translateWithDeepL(string $text, string $format): string
     {
-        
+        $hasSpace = substr($text, -1) === ' ';
+
+      
+
         $postData = [
             'auth_key' => $this->apiKeyPrivate,
             'text' => $text,
             'target_lang' => $this->language
         ];
-    
+
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, 'https://api.deepl.com/v2/translate');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
-    
+
         $response = curl_exec($ch);
         curl_close($ch);
-    
+
         $result = json_decode($response, true);
 
         if (isset($result['translations'][0]['text'])) {
-            return $result['translations'][0]['text'];
+            $translatedText = $result['translations'][0]['text'];
+            
+            if ($hasSpace) {
+                $translatedText .= ' ';
+            }
+
+            return $translatedText;
         } else {
             return $text;
         }
     }
+
 
     private function isTranslatableKeyValuePair($value, string $key): bool
     {
