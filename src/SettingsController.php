@@ -10,8 +10,10 @@ class SettingsController extends CpController
 {
     public function index()
     {
-
-        return view('ai-translator::settings');
+        $apiKey = env('AI_TRANSLATION_API_KEY', ''); 
+        return view('ai-translator::settings', [
+            'api_key' => $apiKey,
+        ]);
     
     }
     public function save(Request $request)
@@ -22,8 +24,9 @@ class SettingsController extends CpController
 
         $this->setEnv('AI_TRANSLATION_API_KEY', $apiKey);
 
-        return view('ai-translator::settings');
-
+        return view('ai-translator::settings', [
+            'api_key' => $apiKey,
+        ]);
     }
 
     protected function setEnv($key, $value)
