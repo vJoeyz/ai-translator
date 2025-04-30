@@ -25,6 +25,7 @@ class SelectEntriesToTranslate extends Action
     public function visibleToBulk($items)
     {
         return collect($items)->every(fn ($item) => $item instanceof \Statamic\Entries\Entry);
+        
     }
     
 
