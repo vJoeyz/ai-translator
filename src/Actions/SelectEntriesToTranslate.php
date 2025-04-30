@@ -5,6 +5,10 @@ namespace AiTranslator\Actions;
 use Statamic\Actions\Action;
 use Statamic\Facades\Site;
 use AiTranslator\TranslateController;
+use Statamic\Facades\Entry;
+use Statamic\Facades\Page;
+
+
 
 class SelectEntriesToTranslate extends Action
 {
@@ -12,6 +16,17 @@ class SelectEntriesToTranslate extends Action
     {
         return __('Translate');
     }
+
+    public function visibleToItem($item)
+    {
+        return $item instanceof \Statamic\Entries\Entry;
+    }
+    
+    public function visibleToBulk($items)
+    {
+        return collect($items)->every(fn ($item) => $item instanceof \Statamic\Entries\Entry);
+    }
+    
 
     protected function fieldItems()
     {
