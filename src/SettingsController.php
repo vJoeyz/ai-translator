@@ -5,11 +5,21 @@ use Statamic\Http\Controllers\CP\CpController;
 // use Statamic\Facades\Settings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Auth;
+
 
 class SettingsController extends CpController
 {
     public function index()
     {
+        $user = Auth::user();
+        if(!$user) {
+            return redirect('/');
+        }
+        else if (!$user->super) {
+            return redirect('/');
+        }
+
         $apiKey = env('AI_TRANSLATION_API_KEY', ''); 
         return view('ai-translator::settings', [
             'api_key' => $apiKey,
@@ -18,6 +28,14 @@ class SettingsController extends CpController
     }
     public function save(Request $request)
     {
+        $user = Auth::user();
+        if(!$user) {
+            return redirect('/');
+        }
+        else if (!$user->super) {
+            return redirect('/');
+        }
+        
         $apiKey = $request->input('api_key');
 
         
