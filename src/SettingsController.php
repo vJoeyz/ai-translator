@@ -21,6 +21,7 @@ class SettingsController extends CpController
         $apiKey = $request->input('api_key');
 
         // Settings::set('ai_translator.api_key', $apiKey);
+        
 
         $this->setEnv('AI_TRANSLATION_API_KEY', $apiKey);
 
