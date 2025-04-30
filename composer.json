@@ -2,7 +2,7 @@
     "name": "option5studio/ai-translator",
     "autoload": {
         "psr-4": {
-            "AiTranslator\\": "ai-translator/"
+            "AiTranslator\\": "src/"
         }
     },
     "autoload-dev": {
