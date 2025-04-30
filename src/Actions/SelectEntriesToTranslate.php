@@ -32,10 +32,7 @@ class SelectEntriesToTranslate extends Action
     {
         $currentSite = Site::selected()->handle();
    
-        // dump(Site::selected());
-        // // $sitesTest = Site::all();
-        // // dump($sitesTest);
-        // die();
+        
         $sites = Site::all()->filter(fn($site) => $site->handle() !== $currentSite);
 
         return [
