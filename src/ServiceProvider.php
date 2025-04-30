@@ -39,7 +39,7 @@ class ServiceProvider extends AddonServiceProvider
         $this->registerWebRoutes(function () {
             Route::post('/translate', 'AiTranslator\TranslateController@index');
             Route::get('/pagetranslator-settings', 'AiTranslator\SettingsController@index')->name('statamic.cp.ai-translator.pagetranslator.settings');  // Geef de juiste naam aan de route
-            Route::get('/pagetranslator-settings-save', 'AiTranslator\SettingsController@save')->name('statamic.cp.ai-translator.pagetranslator.settings.save');  // Geef de juiste naam aan de route
+            Route::post('/pagetranslator-settings-save', 'AiTranslator\SettingsController@save')->name('statamic.cp.ai-translator.pagetranslator.settings.save');  // Geef de juiste naam aan de route
 
 
         });
