@@ -30,21 +30,25 @@ class SelectEntriesToTranslate extends Action
 
     protected function fieldItems()
     {
-        $currentSite = Site::selected()->handle();
+        $run = $this->isMultisite();
+        if($run) {
+            $currentSite = Site::selected()->handle();
    
         
-        $sites = Site::all()->filter(fn($site) => $site->handle() !== $currentSite);
-
-        return [
-            'language' => [
-                'type' => 'select',
-                'label' => __('Pick a language'),
-                'options' => $sites->mapWithKeys(function ($site) {
-                    return [$site->locale => $site->locale];
-                })->toArray(),
-                'default' => $sites->first()->locale, 
-            ]
-        ];
+            $sites = Site::all()->filter(fn($site) => $site->handle() !== $currentSite);
+    
+            return [
+                'language' => [
+                    'type' => 'select',
+                    'label' => __('Pick a language'),
+                    'options' => $sites->mapWithKeys(function ($site) {
+                        return [$site->locale => $site->locale];
+                    })->toArray(),
+                    'default' => $sites->first()->locale, 
+                ]
+            ];
+        }
+       
     }
 
     public function run($items, $values)
