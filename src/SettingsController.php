@@ -2,10 +2,15 @@
 namespace AiTranslator;
 
 use Statamic\Http\Controllers\CP\CpController;
-// use Statamic\Facades\Settings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Arr;
+use Statamic\Facades\Blueprint;
+use Statamic\Facades\YAML;
+use Statamic\Fields\Blueprint as BlueprintContract;
+
 
 
 class SettingsController extends CpController
@@ -13,39 +18,49 @@ class SettingsController extends CpController
     public function index()
     {
         $user = Auth::user();
-        if(!$user) {
+        if (!$user) {
+            return redirect('/');
+        } elseif (!$user->super) {
             return redirect('/');
         }
-        else if (!$user->super) {
-            return redirect('/');
-        }
-
-        $apiKey = env('AI_TRANSLATION_API_KEY', ''); 
-        return view('ai-translator::settings', [
-            'api_key' => $apiKey,
-        ]);
     
+        $blueprint = $this->getBlueprint();
+        $apiKey = env('AI_TRANSLATION_API_KEY', '');
+        $translator = env('AI_TRANSLATOR_SERVICE', 'deepl');
+
+       
+        $fields = $blueprint->fields()->addValues([
+            'translator' => $translator,  
+            'api_key' => $apiKey,  
+        ])->preProcess();  
+    
+     
+    
+    
+        return view('ai-translator::settings', [
+            'blueprint' => $blueprint->toPublishArray(),
+            'values' => $fields->values(),
+            'meta' => $fields->meta(),
+        ]);
     }
+    
     public function save(Request $request)
     {
         $user = Auth::user();
-        if(!$user) {
+        if (!$user || !$user->super) {
             return redirect('/');
         }
-        else if (!$user->super) {
-            return redirect('/');
-        }
-        
+    
         $apiKey = $request->input('api_key');
-
-        
-
+        $translator = $request->input('translator');
+    
+        $this->setEnv('AI_TRANSLATOR_SERVICE', $translator);
         $this->setEnv('AI_TRANSLATION_API_KEY', $apiKey);
+    
+        return redirect('/cp/ai-translator/config')->with('success', 'Instellingen opgeslagen.');
 
-        return view('ai-translator::settings', [
-            'api_key' => $apiKey,
-        ]);
     }
+    
 
     protected function setEnv($key, $value)
     {
@@ -59,5 +74,10 @@ class SettingsController extends CpController
         }
 
         file_put_contents($path, $env);
+    }
+
+    private function getBlueprint(): BlueprintContract
+    {
+        return Blueprint::make()->setContents(YAML::file(__DIR__.'/../resources/blueprints/config.yaml')->parse());
     }
 }

@@ -1,0 +1,24 @@
+title: Translator Settings
+tabs:
+  main:
+    display: Main
+    sections:
+      - fields:
+          - handle: translator
+            field:
+              type: select
+              display: Translator
+              options:
+                deepl: DeepL
+              placeholder: 'Choose a translator'
+              clearable: true
+              required: false
+              default: deepl  
+
+          - handle: api_key
+            field:
+              type: text
+              display: API Key
+              instructions: 'Enter your API key for translation services'
+              required: true
+              default: key

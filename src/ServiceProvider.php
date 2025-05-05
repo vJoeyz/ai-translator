@@ -24,35 +24,37 @@ class ServiceProvider extends AddonServiceProvider
         SelectEntriesToTranslate::class
     ];
 
+    protected $routes = [
+        'cp' => __DIR__.'/../routes/cp.php',
+    ];
+
+    // protected $vite = [
+    //     'input' => ['resources/js/cp.js'],
+    //     'publicDirectory' => 'dist',
+    //     'hotFile' => __DIR__.'/../dist/hot',
+    // ];
+
 
     public function bootAddon()
     {
 
-      
-        
-        // $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
-        // dump($this->loadRoutesFrom(__DIR__.'/../routes/web.php'));
-
 
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'ai-translator');
 
-       
-      
-        $this->registerWebRoutes(function () {
-            Route::post('/translate', 'AiTranslator\TranslateController@index');
-            
-            Route::get('/pagetranslator-settings', 'AiTranslator\SettingsController@index')->name('statamic.cp.ai-translator.pagetranslator.settings');  // Geef de juiste naam aan de route
-            Route::post('/pagetranslator-settings-save', 'AiTranslator\SettingsController@save')->name('statamic.cp.ai-translator.pagetranslator.settings.save');  // Geef de juiste naam aan de route
+        
 
-
-        });
+     
 
         Nav::extend(function ($nav) {
-            $nav->tools('Tools') 
-                ->name('AI Translator') 
-                ->route('ai-translator.pagetranslator.settings') 
-                ->icon('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6.547 9.674l7.778 7.778a4.363 4.363 0 0 0 .9-4.435l5.965-5.964.177.176a1.25 1.25 0 0 0 1.768-1.767l-4.6-4.6a1.25 1.25 0 0 0-1.765 1.771l.177.177-5.965 5.965a4.366 4.366 0 0 0-4.435.899zM10.436 13.563L.5 23.499" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/></svg>'); // SVG-icoon
+            $nav->tools('Tools')
+                ->name('AI Translator')
+                ->route('ai-translator.config.index')
+                ->icon('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 5h16M9 3v2m6-2v2M10 9h4m0 0c-.5 2.5-2 5-4 6.5M14 9c.5 2.5 2 5 4 6.5"/>
+                    <path d="M5 20h6m-3-3v6"/>
+                </svg>');
         });
+        
 
         $envFilePath = base_path('.env');
         $envContents = File::get($envFilePath);
