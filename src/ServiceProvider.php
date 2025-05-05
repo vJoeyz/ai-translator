@@ -19,7 +19,7 @@ class ServiceProvider extends AddonServiceProvider
     //     ],
     //     'publicDirectory' => 'resources/dist',
     // ];
-
+    
     protected $actions = [
         SelectEntriesToTranslate::class
     ];

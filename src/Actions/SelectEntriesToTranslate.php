@@ -19,13 +19,12 @@ class SelectEntriesToTranslate extends Action
 
     public function visibleToItem($item)
     {
-        return $item instanceof \Statamic\Entries\Entry;
+        return $this->isMultisite() && $item instanceof \Statamic\Entries\Entry;
     }
     
     public function visibleToBulk($items)
     {
-        return collect($items)->every(fn ($item) => $item instanceof \Statamic\Entries\Entry);
-        
+        return $this->isMultisite() && collect($items)->every(fn ($item) => $item instanceof \Statamic\Entries\Entry);
     }
     
 
@@ -50,6 +49,11 @@ class SelectEntriesToTranslate extends Action
 
     public function run($items, $values)
     {
+        $run = $this->isMultisite();
+        if(!$run) {
+            return __('This action is not available for single site installations.');
+        }
+
         $currentSite = Site::selected()->handle();
        
         
@@ -66,5 +70,10 @@ class SelectEntriesToTranslate extends Action
         } else {
             return __('Something went wrong');
         }
+    }
+
+    private function isMultisite()
+    {   
+        return Site::all()->count() > 1;
     }
 }
