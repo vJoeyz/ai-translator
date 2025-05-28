@@ -1,5 +1,5 @@
 {
-    "name": "option5studio/ai-translator",
+    "name": "vjoeyz/ai-translator",
     "autoload": {
         "psr-4": {
             "AiTranslator\\": "src/"
