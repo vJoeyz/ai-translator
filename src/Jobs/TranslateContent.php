@@ -450,8 +450,11 @@ class TranslateContent implements ShouldQueue
             'auth_key' => $this->apiKeyPrivate,
             'text' => $text,
             'target_lang' => $this->language,
-            'source_lang' => $this->sourceLang,
         ];
+
+        if ($this->sourceLang) {
+            $postData['source_lang'] = $this->sourceLang;
+        }
 
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $this->apiUrl);
