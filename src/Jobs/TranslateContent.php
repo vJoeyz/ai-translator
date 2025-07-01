@@ -30,8 +30,8 @@ class TranslateContent implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public const API_URL = 'https://api.deepl.com/v2/translate';
-    public const SOURCE_LANG = 'NL';
+    private $apiUrl;
+    private $sourceLang;
 
     private $apiKeyPrivate = null;
     private $service;
@@ -68,11 +68,10 @@ class TranslateContent implements ShouldQueue
         $this->row = $row;
         $this->siteData = $siteData;
         $this->apiKeyPrivate = $apiKeyPrivate;
-
-        $this->apiKeyPrivate = $apiKeyPrivate;
         $this->language = $language;
 
-
+        $this->apiUrl = config('ai-translator.ai-translator.ai_translator_api_url');
+        $this->sourceLang = config('ai-translator.ai-translator.ai_translator_source_lang');
     }
 
     public function handle()
@@ -451,11 +450,11 @@ class TranslateContent implements ShouldQueue
             'auth_key' => $this->apiKeyPrivate,
             'text' => $text,
             'target_lang' => $this->language,
-            'source_lang' => self::SOURCE_LANG,
+            'source_lang' => $this->sourceLang,
         ];
 
         $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, self::API_URL);
+        curl_setopt($ch, CURLOPT_URL, $this->apiUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
