@@ -464,10 +464,15 @@ class TranslateContent implements ShouldQueue
             'auth_key' => $this->apiKeyPrivate,
             'text' => $text,
             'target_lang' => $this->language,
+            'formality' => $this->formality,
         ];
 
         if ($this->sourceLang) {
             $postData['source_lang'] = $this->sourceLang;
+        }
+
+        if ($this->glossaryId) {
+            $postData['glossary_id'] = $this->glossaryId;
         }
 
         $ch = curl_init();
