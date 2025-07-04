@@ -30,10 +30,18 @@ class TranslateContent implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public const DEEPL_LOCALES = [
+        'AR', 'BG', 'CS', 'DA', 'DE', 'EL', 'EN-GB', 'EN-US', 'ES', 'ET', 'FI',
+        'FR', 'HU', 'ID', 'IT', 'JA', 'KO', 'LT', 'LV', 'NB', 'NL', 'PL',
+        'PT-BR', 'PT-PT', 'RO', 'RU', 'SK', 'SL', 'SV', 'TR', 'UK', 'ZH',
+        'ZH-HANS', 'ZH-HANT'
+    ];
+
     private $apiUrl;
     private $sourceLang;
     private $formality;
     private $glossaryId;
+    private $shouldTranslateSlugs;
 
     private $apiKeyPrivate = null;
     private $service;
@@ -68,17 +76,18 @@ class TranslateContent implements ShouldQueue
     private $row;
     private $siteData;
 
-    public function __construct($row, $siteData, $apiKeyPrivate, $language)
+    public function __construct($row, $siteData, $apiKeyPrivate, $locale)
     {
         $this->row = $row;
         $this->siteData = $siteData;
         $this->apiKeyPrivate = $apiKeyPrivate;
-        $this->language = $language;
+        $this->language = $this->toAllowedLocale($locale);
 
         $this->apiUrl = config('ai-translator.ai-translator.ai_translator_api_url');
         $this->sourceLang = config('ai-translator.ai-translator.ai_translator_source_lang');
         $this->formality = config('ai-translator.ai-translator.ai_translator_formality');
         $this->glossaryId = config('ai-translator.ai-translator.ai_translator_glossary_id');
+        $this->shouldTranslateSlugs = config('ai-translator.ai-translator.ai_translator_translate_slugs');
     }
 
     public function handle()
@@ -115,12 +124,13 @@ class TranslateContent implements ShouldQueue
 
             $slug = $page->slug();
 
-            // Never translate slugs
-//            $response = $this->translateText($slug, $this->apiKeyPrivate, 'EN');
-//            if (isset($response['translations'][0]['text'])) {
-//                $slug = $response['translations'][0]['text'];
-//
-//            }
+            if ($this->shouldTranslateSlugs) {
+                $response = $this->translateText($slug, $this->apiKeyPrivate, 'EN');
+                if (isset($response['translations'][0]['text'])) {
+                    $slug = $response['translations'][0]['text'];
+
+                }
+            }
 
             $newPage = Entry::make()
                 ->slug($slug)
@@ -158,10 +168,12 @@ class TranslateContent implements ShouldQueue
 
         $this->processData();
         $this->translateData();
-        $this->translateSlug();
+
+        if ($this->shouldTranslateSlugs) {
+            $this->translateSlug();
+        }
+
         $this->saveTranslation();
-
-
     }
 
     private function processData(): void
@@ -646,5 +658,23 @@ class TranslateContent implements ShouldQueue
         return $string != strip_tags($string);
     }
 
+    private function toAllowedLocale(string $input): ?string
+    {
+        $transformed = strtoupper(str_replace('_', '-', $input));
 
+        // Exact match
+        if (in_array($transformed, self::DEEPL_LOCALES)) {
+            return $transformed;
+        }
+
+        // Try language only
+        $lang = strtoupper(substr($input, 0, 2));
+        foreach (self::DEEPL_LOCALES as $entry) {
+            if ($entry === $lang) {
+                return $entry;
+            }
+        }
+
+        return null; // Not found
+    }
 }

@@ -13,4 +13,5 @@ return [
 
     'ai_translator_glossary_id' => env('AI_TRANSLATION_GLOSSARY_ID'),
 
+    'ai_translator_translate_slugs' => env('AI_TRANSLATION_TRANSLATE_SLUGS', false),
 ];

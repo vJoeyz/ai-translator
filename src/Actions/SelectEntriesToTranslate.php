@@ -66,11 +66,10 @@ class SelectEntriesToTranslate extends Action
         $chosenLanguage = $values['language']; 
 
         $siteData = $sites->firstWhere('locale', $chosenLanguage);
-        $shortLocale = $siteData->short_locale;
        
         if ($siteData) {
             $controller = new TranslateController();
-            $controller->index($items, $siteData, $shortLocale);
+            $controller->index($items, $siteData, $siteData->locale);
         } else {
             return __('Something went wrong');
         }
