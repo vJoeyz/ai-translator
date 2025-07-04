@@ -27,11 +27,13 @@ class SettingsController extends CpController
         $blueprint = $this->getBlueprint();
         $apiKey = env('AI_TRANSLATION_API_KEY', '');
         $translator = env('AI_TRANSLATOR_SERVICE', 'deepl');
+        $freeVersion = env('AI_TRANSLATION_OPTION_FREE_VERSION', 0);
 
        
         $fields = $blueprint->fields()->addValues([
             'translator' => $translator,  
             'api_key' => $apiKey,  
+            'free_version' => $freeVersion
         ])->preProcess();  
     
      
@@ -53,10 +55,16 @@ class SettingsController extends CpController
     
         $apiKey = $request->input('api_key');
         $translator = $request->input('translator');
+        $freeVersion = $request->input('free_version');
+        $isFreeVersion = false;
+        if($freeVersion == true){
+            $isFreeVersion = true;
+        }
     
         $this->setEnv('AI_TRANSLATOR_SERVICE', $translator);
         $this->setEnv('AI_TRANSLATION_API_KEY', $apiKey);
-    
+        $this->setEnv('AI_TRANSLATION_OPTION_FREE_VERSION', $isFreeVersion);
+
         return redirect('/cp/ai-translator/config')->with('success', 'Instellingen opgeslagen.');
 
     }

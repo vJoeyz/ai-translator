@@ -13,7 +13,14 @@ tabs:
               placeholder: 'Choose a translator'
               clearable: true
               required: false
-              default: deepl  
+              default: deepl
+
+          - handle: free_version 
+            field:
+              type: toggle
+              display: Free Version
+              instructions: 'Enable this option if you are using the free version of the translation service.'
+              default: false 
 
           - handle: api_key
             field:

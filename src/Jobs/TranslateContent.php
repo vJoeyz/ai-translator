@@ -57,6 +57,7 @@ class TranslateContent implements ShouldQueue
     private $translatedContent;
     private $row;
     private $siteData;
+    private $isFreeApiKeyVersion;
 
     public function __construct($row, $siteData, $apiKeyPrivate, $language)
     {
@@ -72,24 +73,45 @@ class TranslateContent implements ShouldQueue
 
     public function handle()
     {
+        $this->isFreeApiKeyVersion = env('AI_TRANSLATION_OPTION_FREE_VERSION');
+       
+        if($this->isFreeApiKeyVersion == ""){
+            $this->isFreeApiKeyVersion = 0;
+        }else{
+            $this->isFreeApiKeyVersion = 1;
+
+        }
+
         $page = Entry::query()
                     ->where('id', $this->row)
                     ->first();
+
+        if($page->locale == $this->siteData->handle){
+            return;
+        }
+    
          
     
         $pageLocalizations = $page->descendants();
-      
+        $origin = null;
         if ($page->origin()) {
-            $pageLocalizations->put($page->origin()->locale, $page->origin());
+            $origin = Entry::query()->where('id', $page->origin()->id)->first();
+                if($origin){
+                    if($origin->locale == $this->siteData->handle){
+                       $pageLocalizations = [$origin];
+                       
+                       
+                    }
+                }
+            
         }
         
       
-      
-        
+       
         $translatedPageExists = false;
         $newPage = null;
+       
         foreach($pageLocalizations as $pageTranslation){
-           
             if($pageTranslation->locale == $this->siteData->handle){
                 $translatedPageExists = true;
                 $newPage = $pageTranslation;
@@ -106,7 +128,7 @@ class TranslateContent implements ShouldQueue
      
             $slug = $page->slug();
             
-            $response = $this->translateText($slug, $this->apiKeyPrivate, 'EN');
+            $response = $this->translateWithDeepl($slug, $this->apiKeyPrivate);
             if (isset($response['translations'][0]['text'])) {
                 $slug = $response['translations'][0]['text'];
                 
@@ -147,8 +169,6 @@ class TranslateContent implements ShouldQueue
         $this->translateSlug();
         $this->saveTranslation();
        
-      
-        
     }
 
     private function processData(): void
@@ -378,46 +398,46 @@ class TranslateContent implements ShouldQueue
     
 
     private function getTranslatableSetKeys(array $fields): array
-{
-    $result = [];
+    {
+        $result = [];
 
-    foreach ($fields as $key => $field) {
-        if (isset($field['type'])) {
-           
-            if (in_array($field['type'], ['replicator', 'bard'])) {
-                if (isset($field['sets'])) {
-                    foreach ($field['sets'] as $setKey => $set) {
-                        if (isset($set['fields'])) {
-                            $result[$key][$setKey] = $this->getTranslatableSetKeys($set['fields']);
-                        }
-                    }
-                }
-            } elseif (isset($field['fields'])) {
-                $result[$key] = $this->getTranslatableSetKeys($field['fields']);
-            } else {
-                $result[$key] = $key;
-            }
-        } elseif (is_array($field)) {
-            foreach ($field as $nestedKey => $nestedField) {
-                if (isset($nestedField['type']) && in_array($nestedField['type'], ['replicator', 'bard'])) {
-                    if (isset($nestedField['sets'])) {
-                        foreach ($nestedField['sets'] as $setKey => $set) {
+        foreach ($fields as $key => $field) {
+            if (isset($field['type'])) {
+            
+                if (in_array($field['type'], ['replicator', 'bard'])) {
+                    if (isset($field['sets'])) {
+                        foreach ($field['sets'] as $setKey => $set) {
                             if (isset($set['fields'])) {
-                                $result[$nestedKey][$setKey] = $this->getTranslatableSetKeys($set['fields']);
+                                $result[$key][$setKey] = $this->getTranslatableSetKeys($set['fields']);
                             }
                         }
                     }
-                } elseif (isset($nestedField['fields'])) {
-                    $result[$nestedKey] = $this->getTranslatableSetKeys($nestedField['fields']);
+                } elseif (isset($field['fields'])) {
+                    $result[$key] = $this->getTranslatableSetKeys($field['fields']);
                 } else {
-                    $result[$nestedKey] = $nestedKey;
+                    $result[$key] = $key;
+                }
+            } elseif (is_array($field)) {
+                foreach ($field as $nestedKey => $nestedField) {
+                    if (isset($nestedField['type']) && in_array($nestedField['type'], ['replicator', 'bard'])) {
+                        if (isset($nestedField['sets'])) {
+                            foreach ($nestedField['sets'] as $setKey => $set) {
+                                if (isset($set['fields'])) {
+                                    $result[$nestedKey][$setKey] = $this->getTranslatableSetKeys($set['fields']);
+                                }
+                            }
+                        }
+                    } elseif (isset($nestedField['fields'])) {
+                        $result[$nestedKey] = $this->getTranslatableSetKeys($nestedField['fields']);
+                    } else {
+                        $result[$nestedKey] = $nestedKey;
+                    }
                 }
             }
         }
-    }
 
-    return $result;
-}
+        return $result;
+    }
 
      
     function translateText($text, $apiKey, $targetLanguage) {
@@ -472,6 +492,7 @@ class TranslateContent implements ShouldQueue
 
     private function translateWithDeepL(string $text, string $format): string
     {
+
         $hasSpace = substr($text, -1) === ' ';
 
       
@@ -482,8 +503,17 @@ class TranslateContent implements ShouldQueue
             'target_lang' => $this->language
         ];
 
+        $url = null;
+
+        if($this->isFreeApiKeyVersion == 1){
+            $url = 'https://api-free.deepl.com/v2/translate';
+        }else{
+            $url = 'https://api.deepl.com/v2/translate';
+        }
+
+
         $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, 'https://api.deepl.com/v2/translate');
+        curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
@@ -566,8 +596,9 @@ class TranslateContent implements ShouldQueue
             $this->content->set($key, $value);
             
         }
-       
+        
 
+        
         $this->content->save();
        
        
