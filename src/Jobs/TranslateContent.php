@@ -32,6 +32,8 @@ class TranslateContent implements ShouldQueue
 
     private $apiUrl;
     private $sourceLang;
+    private $formality;
+    private $glossaryId;
 
     private $apiKeyPrivate = null;
     private $service;
@@ -51,6 +53,9 @@ class TranslateContent implements ShouldQueue
     private $supportedFieldtypes = [
         'array', 'bard', 'grid', 'list', 'markdown', 'redactor', 'replicator',
         'table', 'tags', 'text', 'textarea',
+    ];
+    private $textFieldtypes = [
+        'text', 'textarea', 'markdown', 'redactor',
     ];
 
     private $excludedFields = [
@@ -72,6 +77,8 @@ class TranslateContent implements ShouldQueue
 
         $this->apiUrl = config('ai-translator.ai-translator.ai_translator_api_url');
         $this->sourceLang = config('ai-translator.ai-translator.ai_translator_source_lang');
+        $this->formality = config('ai-translator.ai-translator.ai_translator_formality');
+        $this->glossaryId = config('ai-translator.ai-translator.ai_translator_glossary_id');
     }
 
     public function handle()
@@ -125,6 +132,13 @@ class TranslateContent implements ShouldQueue
 
 
             $newPage->save();
+
+            Log::debug('New Page Created', [
+                'id' => $newPage->id,
+                'locale' => $this->siteData->handle,
+                'collection' => $newPage->collection()->handle(),
+                'slug' => $newPage->slug(),
+            ]);
 
             $this->translatedContent = Entry::find($newPage->id);
         }
@@ -307,7 +321,7 @@ class TranslateContent implements ShouldQueue
         foreach ($fields as $key => $field) {
             if (isset($field['type'])) {
 
-                if ($field['type'] === 'text') {
+                if (in_array($field['type'], $this->textFieldtypes)) {
                     $result[$key] = $key;
                 }
 
@@ -327,7 +341,7 @@ class TranslateContent implements ShouldQueue
                 }
             } elseif (is_array($field)) {
                 foreach ($field as $nestedKey => $nestedField) {
-                    if (isset($nestedField['type']) && $nestedField['type'] === 'text') {
+                    if (isset($nestedField['type']) && in_array($nestedField['type'], $this->textFieldtypes)) {
                         if (isset($field['handle']) && isset($field['field']['localizable']) && $field['field']['localizable'] === true) {
 
                             if (!is_numeric($field['handle'])) {
