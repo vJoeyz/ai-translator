@@ -477,6 +477,7 @@ class TranslateContent implements ShouldQueue
             'text' => $text,
             'target_lang' => $this->language,
             'formality' => $this->formality,
+            'model_type' => 'quality_optimized'
         ];
 
         if ($this->sourceLang) {
