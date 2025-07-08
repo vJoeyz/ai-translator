@@ -42,6 +42,7 @@ class TranslateContent implements ShouldQueue
     private $formality;
     private $glossaryId;
     private $shouldTranslateSlugs;
+    private $preserveFormatting;
 
     private $apiKeyPrivate = null;
     private $service;
@@ -88,6 +89,7 @@ class TranslateContent implements ShouldQueue
         $this->formality = config('ai-translator.ai-translator.ai_translator_formality');
         $this->glossaryId = config('ai-translator.ai-translator.ai_translator_glossary_id');
         $this->shouldTranslateSlugs = config('ai-translator.ai-translator.ai_translator_translate_slugs');
+        $this->preserveFormatting = config('ai-translator.ai-translator.ai_translator_preserve_formatting');
     }
 
     public function handle()
@@ -477,7 +479,8 @@ class TranslateContent implements ShouldQueue
             'text' => $text,
             'target_lang' => $this->language,
             'formality' => $this->formality,
-            'model_type' => 'quality_optimized'
+            'model_type' => 'quality_optimized',
+            'preserve_formatting' => $this->preserveFormatting
         ];
 
         if ($this->sourceLang) {

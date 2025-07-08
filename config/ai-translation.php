@@ -14,4 +14,6 @@ return [
     'ai_translator_glossary_id' => env('AI_TRANSLATION_GLOSSARY_ID'),
 
     'ai_translator_translate_slugs' => env('AI_TRANSLATION_TRANSLATE_SLUGS', false),
+
+    'ai_translator_preserve_formatting' => env('AI_TRANSLATION_PRESERVE_FORMATTING', true),
 ];
