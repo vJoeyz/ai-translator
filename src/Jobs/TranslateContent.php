@@ -286,7 +286,13 @@ class TranslateContent implements ShouldQueue
         if ($type === 'text') {
             $refs[$lastKey] = $toSetValue;
         } elseif ($type === 'bard') {
-            $refs[$lastKey]['content'] = $toSetValue;
+            if (isset($toSetValue[0]['content']) && count($toSetValue) > 1) {
+                $refs[$lastKey]['content'] = $toSetValue;
+            } elseif (isset($toSetValue[0]['content'])) {
+                $refs[$lastKey]['content'] = $toSetValue[0]['content'];
+            } else {
+                $refs[$lastKey]['content'] = $toSetValue;
+            }
         }
     }
     
