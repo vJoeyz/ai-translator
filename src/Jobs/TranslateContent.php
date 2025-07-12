@@ -14,6 +14,7 @@ use Illuminate\Queue\SerializesModels;
 use Statamic\Facades\Entry;
 use Statamic\Facades\Collection;
 use Illuminate\Http\Request;
+use Statamic\Fieldtypes\Bard\Augmentor;
 
 use Illuminate\Support\Facades\Config;
 use Statamic\Facades\Fieldset;
@@ -77,6 +78,9 @@ class TranslateContent implements ShouldQueue
     private $row;
     private $siteData;
 
+    private $pathToJson = [];
+
+
     public function __construct($row, $siteData, $apiKeyPrivate, $locale)
     {
         $this->row = $row;
@@ -98,28 +102,41 @@ class TranslateContent implements ShouldQueue
             ->where('id', $this->row)
             ->first();
 
+        if($page->locale == $this->siteData->handle){
+            return;
+        }
+
 
         $pageLocalizations = $page->descendants();
-
+        $origin = null;
         if ($page->origin()) {
-            $pageLocalizations->put($page->origin()->locale, $page->origin());
+            $origin = Entry::query()->where('id', $page->origin()->id)->first();
+                if($origin){
+                    if($origin->locale == $this->siteData->handle){
+                       $pageLocalizations = [$origin];
+
+
+                    }
+                }
+
         }
+
 
 
         $translatedPageExists = false;
         $newPage = null;
-        foreach ($pageLocalizations as $pageTranslation) {
 
-            if ($pageTranslation->locale == $this->siteData->handle) {
+        foreach($pageLocalizations as $pageTranslation){
+            if($pageTranslation->locale == $this->siteData->handle){
                 $translatedPageExists = true;
                 $newPage = $pageTranslation;
-
+                
                 $newPage->data($page->data());
-
+             
                 $this->translatedContent = $newPage;
                 break;
-
-            }
+            
+            } 
         }
 
         if ($translatedPageExists == false) {
@@ -127,14 +144,14 @@ class TranslateContent implements ShouldQueue
             $slug = $page->slug();
 
             if ($this->shouldTranslateSlugs) {
-                $response = $this->translateText($slug, $this->apiKeyPrivate, 'EN');
+                $response = $this->translateWithDeepl($slug, $this->apiKeyPrivate, 'EN');
                 if (isset($response['translations'][0]['text'])) {
                     $slug = $response['translations'][0]['text'];
 
                 }
             }
-
-            $newPage = Entry::make()
+            
+            $newPage =  Entry::make()
                 ->slug($slug)
                 ->origin($page->id)
                 ->locale($this->siteData->handle)
@@ -156,26 +173,31 @@ class TranslateContent implements ShouldQueue
         }
 
 
+
         $this->targetLocale = $this->siteData->locale;
+        
+        $this->content =  $this->translatedContent;
 
-        $this->content = $this->translatedContent;
         $this->contentType = $this->content->collection()->handle();
-
+        
 
         $this->defaultData = $this->content->data();
-
-
+            
+    
+            
         $this->localizedData = $this->defaultData;
-
+            
 
         $this->processData();
-        $this->translateData();
 
-        if ($this->shouldTranslateSlugs) {
-            $this->translateSlug();
-        }
+        $this->dumpTranslatedPaths($this->dataToTranslate);
+        $this->translateExportJson();
 
-        $this->saveTranslation();
+
+
+
+
+
     }
 
     private function processData(): void
@@ -185,6 +207,134 @@ class TranslateContent implements ShouldQueue
         $this->getFieldKeys();
         $this->getDataToTranslate();
     }
+
+    private function dumpTranslatedPaths(array $data = [], $path = ''): void
+    {
+        foreach ($data as $key => $value) {
+            $currentPath = $path ? $path . '.' . $key : $key;
+
+            if ((isset($value['type']) && isset($value['content']))) {
+
+
+                $bardContent =  $value;
+
+                $html = (new Augmentor($this))->renderProsemirrorToHtml([
+                    'type' => $bardContent['type'],
+                    'content' => $bardContent['content'],
+                ]);
+
+
+                $this->pathToJson[$currentPath . '.bard'] = $html;
+
+            }else if(is_array($value)) {
+                    $this->dumpTranslatedPaths($value, $currentPath);
+
+            } else{
+                if ($this->isTranslatableKeyValuePair($value, $key)) {
+                    $this->pathToJson[$currentPath . '.text'] = $value;
+                }
+            }
+
+        }
+
+        $this->pathToJson['slug'] = $this->content->slug;
+
+    }
+
+
+
+     private function translateExportJson()
+    {
+
+
+        $translatedItems = $this->pathToJson;
+
+        foreach ($translatedItems as $key => $value) {
+            $path = $key;
+
+            $translatedValue = $this->translateWithDeepL($value, 'text');
+            $this->setTranslatedValueByPath($this->dataToTranslate, $path, $translatedValue);
+
+        }
+
+        foreach ($this->dataToTranslate as $key => $value) {
+
+            $this->content->set($key, $value);
+
+        }
+
+        $slug = $translatedItems['slug'];
+
+
+        $this->content->slug($slug);
+        $this->content->save();
+
+
+
+    }
+
+    private function setTranslatedValueByPath(&$entry, string $path, $value): void
+    {
+        $refs = &$entry;
+
+
+        $keys = $this->pathStringToArrayKeys($path);
+        $type = array_pop($keys);
+        $lastKey = array_pop($keys);
+
+        if ($type === 'text') {
+            $toSetValue = $value;
+        } elseif ($type === 'bard') {
+            $toSetValue = (new Augmentor($this))->renderHtmlToProsemirror($value)['content'];
+        } else {
+            $toSetValue = $value;
+        }
+
+        foreach ($keys as $key) {
+            if (is_numeric($key)) {
+                $key = (int)$key;
+            }
+
+            if (!isset($refs[$key])) {
+                $refs[$key] = [];
+            }
+
+            $refs = &$refs[$key];
+        }
+
+        if ($type === 'text') {
+            $refs[$lastKey] = $toSetValue;
+        } elseif ($type === 'bard') {
+            if (isset($toSetValue[0]['content']) && count($toSetValue) > 1) {
+                $refs[$lastKey]['content'] = $toSetValue;
+            } elseif (isset($toSetValue[0]['content'])) {
+                $refs[$lastKey]['content'] = $toSetValue[0]['content'];
+            } else {
+                $refs[$lastKey]['content'] = $toSetValue;
+            }
+        }
+    }
+
+
+
+    function pathStringToArrayKeys($path) {
+        $parts = explode('.', $path);
+
+
+
+
+        $result = [];
+        foreach ($parts as $part) {
+            if (is_numeric($part)) {
+                $result[] = (int) $part;
+            } else {
+                $result[] = $part;
+            }
+        }
+        return $result;
+    }
+
+
 
     private function getLocalizableFields(): array
     {
@@ -222,8 +372,9 @@ class TranslateContent implements ShouldQueue
     private function getTranslatableFields()
     {
         $localizableFields = $this->getLocalizableFields();
-
-
+        
+      
+       
         $this->translatableFields = $localizableFields;
     }
 
@@ -238,6 +389,8 @@ class TranslateContent implements ShouldQueue
         }
 
 
+       
+      
     }
 
 
@@ -339,53 +492,112 @@ class TranslateContent implements ShouldQueue
                     $result[$key] = $key;
                 }
 
+                if (isset($field['sets']) || (isset($field['field']) && isset($field['field']['sets']))) {
+                    $sets = $field['sets'] ?? $field['field']['sets'] ?? [];
 
-                if (isset($field['sets'])) {
-                    foreach ($field['sets'] as $setKey => $set) {
+                    foreach ($sets as $setKey => $set) {
+                        if (isset($set['sets'])) {
+                            foreach ($set['sets'] as $nestedSetKey => $nestedSet) {
+                                if (isset($nestedSet['fields'])) {
+                                    $result[$key][$setKey][$nestedSetKey] = $this->getTranslatableFieldKeys($nestedSet['fields']);
+                                }
+                            }
+                        }
+
                         if (isset($set['fields'])) {
-                            $result[$key] = array_merge($result[$key] ?? [], $this->getTranslatableFieldKeys($set['fields']));
-                        } else {
-                            $result[$key] = array_merge($result[$key] ?? [], $this->getTranslatableFieldKeys($set));
+                            $result[$key][$setKey] = $this->getTranslatableFieldKeys($set['fields']);
+                        } elseif (is_array($set)) {
+                            $result[$key][$setKey] = $this->getTranslatableFieldKeys($set);
                         }
                     }
                 }
 
+
                 if (isset($field['fields'])) {
                     $result[$key] = array_merge($result[$key] ?? [], $this->getTranslatableFieldKeys($field['fields']));
                 }
+            }else if(is_array($field) && isset($field['import'])){
+                $importedFieldsetName = $field['import'];
+                $importedFieldset = Fieldset::find($importedFieldsetName);
+
+                if ($importedFieldset) {
+                    $importedFieldsetFields = $importedFieldset->fields()->all()->toArray();
+                    $importedKeys = $this->getTranslatableFieldKeys($importedFieldsetFields);
+
+                    if (isset($field['prefix'])) {
+                        $prefix = $field['prefix'];
+                        $prefixedKeys = [];
+
+                        foreach ($importedKeys as $k => $v) {
+                            if (is_array($v)) {
+                                $nestedPrefixed = [];
+                                foreach ($v as $nk => $nv) {
+                                    $nestedPrefixed["{$prefix}{$nk}"] = is_string($nv) ? "{$prefix}{$nv}" : $nv;
+                                }
+                                $prefixedKeys["{$prefix}{$k}"] = $nestedPrefixed;
+                            } else {
+                                $prefixedKeys["{$prefix}{$k}"] = is_string($v) ? "{$prefix}{$v}" : $v;
+                            }
+                        }
+
+                        $result = array_merge($result, $prefixedKeys);
+                    } else {
+                        $result = array_merge($result, $importedKeys);
+                    }
+
+                } else {
+                    $result[$importedFieldsetName] = null;
+                }
+
             } elseif (is_array($field)) {
                 foreach ($field as $nestedKey => $nestedField) {
                     if (isset($nestedField['type']) && in_array($nestedField['type'], $this->textFieldtypes)) {
                         if (isset($field['handle']) && isset($field['field']['localizable']) && $field['field']['localizable'] === true) {
-
+                            
                             if (!is_numeric($field['handle'])) {
                                 $result[$field['handle']] = [];
                             }
                         }
                     } else if (isset($field['handle']) && !is_array($field['field'])) {
-
+                    
                         [$fieldsetName, $fieldName] = explode('.', $field['field']);
-
+                        
                         $fieldset = Fieldset::find($fieldsetName);
-
+                    
                         if ($fieldset) {
                             $fieldsetFields = $fieldset->fields()->all()->toArray();
-
-
+                        
+                        
                             if (isset($fieldsetFields[$fieldName]['fields'])) {
                                 $result = array_merge($result, $this->getTranslatableFieldKeys($fieldsetFields[$fieldName]['fields']));
                             } elseif (is_array($fieldsetFields[$fieldName])) {
                                 $result = array_merge($result, $this->getTranslatableFieldKeys($fieldsetFields[$fieldName]));
                             }
                         } else {
-
+                        
                             $result[$field['handle']] = [];
                         }
-                    } elseif (isset($nestedField['fields'])) {
+                    }else if(isset($field['import'])){
+                        $importedFieldsetName = $field['import'];
+                        $importedFieldset = Fieldset::find($importedFieldsetName);
 
+
+
+                        if ($importedFieldset) {
+                            $importedFieldsetFields = $importedFieldset->fields()->all()->toArray();
+
+
+
+                            $result = array_merge($result, $this->getTranslatableFieldKeys($importedFieldsetFields));
+                        } else {
+
+                            $result[$importedFieldsetName] = null;
+                        }
+                    } elseif (isset($nestedField['fields'])) {
+                    
                         $result = array_merge($result, $this->getTranslatableFieldKeys($nestedField['fields']));
                     } elseif (is_array($nestedField)) {
-
+                        
                         $result = array_merge($result, $this->getTranslatableFieldKeys($nestedField));
                     }
                 }
@@ -447,15 +659,15 @@ class TranslateContent implements ShouldQueue
                 return $this->translate($value, $key);
             }
         );
-
+        
     }
 
     private function translate($value, string $key)
     {
-
+   
 
         // Check if '$key: $value' should be translated.
-        if (!$this->isTranslatableKeyValuePair($value, $key)) {
+        if (! $this->isTranslatableKeyValuePair($value, $key)) {
             return $value;
         }
 
@@ -572,17 +784,17 @@ class TranslateContent implements ShouldQueue
 
     private function saveTranslation(): void
     {
-
+       
         foreach ($this->translatedData as $key => $value) {
-
+           
             $this->content->set($key, $value);
-
+            
         }
-
+       
 
         $this->content->save();
-
-
+       
+       
     }
 
     private function arrayFilterRecursive(array $array, callable $callback = null): array
@@ -602,8 +814,8 @@ class TranslateContent implements ShouldQueue
     {
         $slug = $this->content->slug();
         $translatedSlug = $this->translateWithDeepL($slug, 'text');
-
-
+    
+       
         $this->content->slug($translatedSlug);
     }
 
