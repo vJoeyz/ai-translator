@@ -102,7 +102,7 @@ class TranslateContent implements ShouldQueue
             ->where('id', $this->row)
             ->first();
 
-        if($page->locale == $this->siteData->handle){
+        if ($page->locale == $this->siteData->handle) {
             return;
         }
 
@@ -111,32 +111,31 @@ class TranslateContent implements ShouldQueue
         $origin = null;
         if ($page->origin()) {
             $origin = Entry::query()->where('id', $page->origin()->id)->first();
-                if($origin){
-                    if($origin->locale == $this->siteData->handle){
-                       $pageLocalizations = [$origin];
+            if ($origin) {
+                if ($origin->locale == $this->siteData->handle) {
+                    $pageLocalizations = [$origin];
 
 
-                    }
                 }
+            }
 
         }
-
 
 
         $translatedPageExists = false;
         $newPage = null;
 
-        foreach($pageLocalizations as $pageTranslation){
-            if($pageTranslation->locale == $this->siteData->handle){
+        foreach ($pageLocalizations as $pageTranslation) {
+            if ($pageTranslation->locale == $this->siteData->handle) {
                 $translatedPageExists = true;
                 $newPage = $pageTranslation;
-                
+
                 $newPage->data($page->data());
-             
+
                 $this->translatedContent = $newPage;
                 break;
-            
-            } 
+
+            }
         }
 
         if ($translatedPageExists == false) {
@@ -150,8 +149,8 @@ class TranslateContent implements ShouldQueue
 
                 }
             }
-            
-            $newPage =  Entry::make()
+
+            $newPage = Entry::make()
                 ->slug($slug)
                 ->origin($page->id)
                 ->locale($this->siteData->handle)
@@ -173,29 +172,23 @@ class TranslateContent implements ShouldQueue
         }
 
 
-
         $this->targetLocale = $this->siteData->locale;
-        
-        $this->content =  $this->translatedContent;
+
+        $this->content = $this->translatedContent;
 
         $this->contentType = $this->content->collection()->handle();
-        
+
 
         $this->defaultData = $this->content->data();
-            
-    
-            
+
+
         $this->localizedData = $this->defaultData;
-            
+
 
         $this->processData();
 
         $this->dumpTranslatedPaths($this->dataToTranslate);
         $this->translateExportJson();
-
-
-
-
 
 
     }
@@ -216,7 +209,7 @@ class TranslateContent implements ShouldQueue
             if ((isset($value['type']) && isset($value['content']))) {
 
 
-                $bardContent =  $value;
+                $bardContent = $value;
 
                 $html = (new Augmentor($this))->renderProsemirrorToHtml([
                     'type' => $bardContent['type'],
@@ -226,10 +219,10 @@ class TranslateContent implements ShouldQueue
 
                 $this->pathToJson[$currentPath . '.bard'] = $html;
 
-            }else if(is_array($value)) {
-                    $this->dumpTranslatedPaths($value, $currentPath);
+            } else if (is_array($value)) {
+                $this->dumpTranslatedPaths($value, $currentPath);
 
-            } else{
+            } else {
                 if ($this->isTranslatableKeyValuePair($value, $key)) {
                     $this->pathToJson[$currentPath . '.text'] = $value;
                 }
@@ -242,8 +235,7 @@ class TranslateContent implements ShouldQueue
     }
 
 
-
-     private function translateExportJson()
+    private function translateExportJson()
     {
 
 
@@ -268,7 +260,6 @@ class TranslateContent implements ShouldQueue
 
         $this->content->slug($slug);
         $this->content->save();
-
 
 
     }
@@ -316,24 +307,21 @@ class TranslateContent implements ShouldQueue
     }
 
 
-
-    function pathStringToArrayKeys($path) {
+    function pathStringToArrayKeys($path)
+    {
         $parts = explode('.', $path);
-
-
 
 
         $result = [];
         foreach ($parts as $part) {
             if (is_numeric($part)) {
-                $result[] = (int) $part;
+                $result[] = (int)$part;
             } else {
                 $result[] = $part;
             }
         }
         return $result;
     }
-
 
 
     private function getLocalizableFields(): array
@@ -372,9 +360,8 @@ class TranslateContent implements ShouldQueue
     private function getTranslatableFields()
     {
         $localizableFields = $this->getLocalizableFields();
-        
-      
-       
+
+
         $this->translatableFields = $localizableFields;
     }
 
@@ -389,8 +376,6 @@ class TranslateContent implements ShouldQueue
         }
 
 
-       
-      
     }
 
 
@@ -516,7 +501,7 @@ class TranslateContent implements ShouldQueue
                 if (isset($field['fields'])) {
                     $result[$key] = array_merge($result[$key] ?? [], $this->getTranslatableFieldKeys($field['fields']));
                 }
-            }else if(is_array($field) && isset($field['import'])){
+            } else if (is_array($field) && isset($field['import'])) {
                 $importedFieldsetName = $field['import'];
                 $importedFieldset = Fieldset::find($importedFieldsetName);
 
@@ -553,39 +538,37 @@ class TranslateContent implements ShouldQueue
                 foreach ($field as $nestedKey => $nestedField) {
                     if (isset($nestedField['type']) && in_array($nestedField['type'], $this->textFieldtypes)) {
                         if (isset($field['handle']) && isset($field['field']['localizable']) && $field['field']['localizable'] === true) {
-                            
+
                             if (!is_numeric($field['handle'])) {
                                 $result[$field['handle']] = [];
                             }
                         }
                     } else if (isset($field['handle']) && !is_array($field['field'])) {
-                    
+
                         [$fieldsetName, $fieldName] = explode('.', $field['field']);
-                        
+
                         $fieldset = Fieldset::find($fieldsetName);
-                    
+
                         if ($fieldset) {
                             $fieldsetFields = $fieldset->fields()->all()->toArray();
-                        
-                        
+
+
                             if (isset($fieldsetFields[$fieldName]['fields'])) {
                                 $result = array_merge($result, $this->getTranslatableFieldKeys($fieldsetFields[$fieldName]['fields']));
                             } elseif (is_array($fieldsetFields[$fieldName])) {
                                 $result = array_merge($result, $this->getTranslatableFieldKeys($fieldsetFields[$fieldName]));
                             }
                         } else {
-                        
+
                             $result[$field['handle']] = [];
                         }
-                    }else if(isset($field['import'])){
+                    } else if (isset($field['import'])) {
                         $importedFieldsetName = $field['import'];
                         $importedFieldset = Fieldset::find($importedFieldsetName);
 
 
-
                         if ($importedFieldset) {
                             $importedFieldsetFields = $importedFieldset->fields()->all()->toArray();
-
 
 
                             $result = array_merge($result, $this->getTranslatableFieldKeys($importedFieldsetFields));
@@ -594,10 +577,10 @@ class TranslateContent implements ShouldQueue
                             $result[$importedFieldsetName] = null;
                         }
                     } elseif (isset($nestedField['fields'])) {
-                    
+
                         $result = array_merge($result, $this->getTranslatableFieldKeys($nestedField['fields']));
                     } elseif (is_array($nestedField)) {
-                        
+
                         $result = array_merge($result, $this->getTranslatableFieldKeys($nestedField));
                     }
                 }
@@ -659,15 +642,15 @@ class TranslateContent implements ShouldQueue
                 return $this->translate($value, $key);
             }
         );
-        
+
     }
 
     private function translate($value, string $key)
     {
-   
+
 
         // Check if '$key: $value' should be translated.
-        if (! $this->isTranslatableKeyValuePair($value, $key)) {
+        if (!$this->isTranslatableKeyValuePair($value, $key)) {
             return $value;
         }
 
@@ -692,7 +675,8 @@ class TranslateContent implements ShouldQueue
             'target_lang' => $this->language,
             'formality' => $this->formality,
             'model_type' => 'quality_optimized',
-            'preserve_formatting' => $this->preserveFormatting
+            'preserve_formatting' => (int)$this->preserveFormatting,
+            'tag_handling' => 'html', // split_sentences is ignored when model is set to 'quality_optimized', but 'nonewlines' will be used if tag_handling is enabled; 0 will be used if tag_handling is not enabled
         ];
 
         if ($this->sourceLang) {
@@ -714,7 +698,7 @@ class TranslateContent implements ShouldQueue
 
         $result = json_decode($response, true);
         Log::debug('DeepL Translation Result', [
-            'text' => $text,
+            'request' => $postData,
             'result' => $result,
         ]);
 
@@ -784,17 +768,17 @@ class TranslateContent implements ShouldQueue
 
     private function saveTranslation(): void
     {
-       
+
         foreach ($this->translatedData as $key => $value) {
-           
+
             $this->content->set($key, $value);
-            
+
         }
-       
+
 
         $this->content->save();
-       
-       
+
+
     }
 
     private function arrayFilterRecursive(array $array, callable $callback = null): array
@@ -814,8 +798,8 @@ class TranslateContent implements ShouldQueue
     {
         $slug = $this->content->slug();
         $translatedSlug = $this->translateWithDeepL($slug, 'text');
-    
-       
+
+
         $this->content->slug($translatedSlug);
     }
 
