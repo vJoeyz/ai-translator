@@ -75,6 +75,12 @@ class TranslateContent implements ShouldQueue
        
     }
 
+    
+    public function config(): array
+    {
+        return [];
+    }
+
     public function handle()
     {
         $this->isFreeApiKeyVersion = env('AI_TRANSLATION_OPTION_FREE_VERSION');
