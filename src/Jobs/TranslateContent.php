@@ -97,6 +97,12 @@ class TranslateContent implements ShouldQueue
         $this->preserveFormatting = config('ai-translator.ai-translator.ai_translator_preserve_formatting');
     }
 
+    
+    public function config(): array
+    {
+        return [];
+    }
+
     public function handle()
     {
         $page = Entry::query()
