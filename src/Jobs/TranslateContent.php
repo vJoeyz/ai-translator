@@ -3,6 +3,7 @@
 namespace AiTranslator\Jobs;
 
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Statamic\Facades\Search;
 
 
@@ -276,6 +277,9 @@ class TranslateContent implements ShouldQueue
         if ($type === 'text') {
             $toSetValue = $value;
         } elseif ($type === 'bard') {
+            if (Str::squish($value) === '') {
+                $value = str_repeat('&nbsp;', strlen($value)); // to prevent prosemirror errors on whitespace-only content
+            }
             $toSetValue = (new Augmentor($this))->renderHtmlToProsemirror($value)['content'];
         } else {
             $toSetValue = $value;
