@@ -680,7 +680,6 @@ class TranslateContent implements ShouldQueue
 
 
         $postData = [
-            'auth_key' => $this->apiKeyPrivate,
             'text' => $text,
             'target_lang' => $this->language,
             'formality' => $this->formality,
@@ -702,6 +701,9 @@ class TranslateContent implements ShouldQueue
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: DeepL-Auth-Key ' . $this->apiKeyPrivate,
+        ]);
 
         $response = curl_exec($ch);
         curl_close($ch);
