@@ -72,6 +72,14 @@ class TranslateContent implements ShouldQueue
     private $excludedFields = [
         'terms',
     ];
+
+    /**
+     * Keys that are kept on the localization even though they aren't localizable
+     * blueprint fields.
+     */
+    private $preservedDataKeys = [
+        'updated_at', 'updated_by',
+    ];
     private $excludedFieldtypes = [
         'taxonomy',
     ];
@@ -137,7 +145,7 @@ class TranslateContent implements ShouldQueue
                 $translatedPageExists = true;
                 $newPage = $pageTranslation;
 
-                $newPage->data($page->data());
+                $newPage->data($this->localizableData($page));
 
                 $this->translatedContent = $newPage;
                 break;
@@ -162,7 +170,7 @@ class TranslateContent implements ShouldQueue
                 ->origin($page->id)
                 ->locale($this->siteData->handle)
                 ->collection(Collection::findByHandle($page->collection->handle))
-                ->data($page->data())
+                ->data($this->localizableData($page))
                 ->blueprint($page->blueprint->handle);
 
 
@@ -336,13 +344,8 @@ class TranslateContent implements ShouldQueue
 
     private function getLocalizableFields(): array
     {
-        // Get the fields from the blueprint.
-        $fields = collect($this->content->blueprint()->fields()->all());
-
-        // Get the fields where "localizable: true".
-        $localizableFields = $fields->filter(function ($field) {
-            return isset($field->config()['localizable']) && $field->config()['localizable'] === true;
-        });
+        // Get the fields from the blueprint where "localizable: true".
+        $localizableFields = $this->localizableBlueprintFields($this->content->blueprint());
 
         // Add the title field, so it can be translated.
         if ($this->contentType !== 'globals' && !$localizableFields->has('title')) {
@@ -353,6 +356,43 @@ class TranslateContent implements ShouldQueue
         }
 
         return $localizableFields->toArray();
+    }
+
+    /**
+     * Get the fields of a blueprint that are marked "localizable: true", keyed by handle.
+     */
+    private function localizableBlueprintFields($blueprint): \Illuminate\Support\Collection
+    {
+        return collect($blueprint->fields()->all())
+            ->filter(function ($field) {
+                $config = $field->config();
+
+                return isset($config['localizable']) && $config['localizable'] === true;
+            });
+    }
+
+    /**
+     * Reduce an entry's data to only the fields that are localizable in its blueprint.
+     *
+     * Non-localizable fields are deliberately left out of the localization entirely,
+     * so Statamic falls back to the origin for those values instead of storing a
+     * (never translated) copy of them.
+     */
+    private function localizableData($entry): array
+    {
+        $data = $entry->data();
+        $data = is_array($data) ? $data : $data->toArray();
+
+        $handles = $this->localizableBlueprintFields($entry->blueprint())->keys()->all();
+
+        // The title is always localizable, so it can be translated.
+        $handles[] = 'title';
+
+        // Bookkeeping keys that live in the data but aren't blueprint fields. They are
+        // never translated, but each localization should keep its own copy of them.
+        $handles = array_merge($handles, $this->preservedDataKeys);
+
+        return array_intersect_key($data, array_flip($handles));
     }
 
 
